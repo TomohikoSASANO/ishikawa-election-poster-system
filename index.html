@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金沢市選挙ポスター掲示場マッピングシステム</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            background: #FF5722;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #FF5722;
+            background: #fff5f5;
+        }
+
+        .upload-area.dragover {
+            border-color: #2196F3;
+            background: #e3f2fd;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f5f7fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF5722 0%, #FF8A65 100%);
+            transition: width 0.3s ease;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .location-list {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .location-item {
+            background: #f5f7fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .location-item:hover {
+            background: #e8eaf0;
+            transform: translateX(5px);
+        }
+
+        .location-item.visited {
+            background: #e8f5e9;
+        }
+
+        .location-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .location-number {
+            background: #FF5722;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .location-item.visited .location-number {
+            background: #4CAF50;
+        }
+
+        .location-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .location-address {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .action-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #1976D2;
+        }
+
+        .action-btn.secondary {
+            background: #757575;
+        }
+
+        .action-btn.secondary:hover {
+            background: #616161;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        /* カスタムマーカーのスタイル */
+        .custom-marker {
+            background: #FF5722;
+            color: white;
+            border: 3px solid white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 29px;
+            font-weight: bold;
+            font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .custom-marker:hover {
+            transform: scale(1.1);
+            z-index: 1000;
+        }
+
+        .custom-marker.visited {
+            background: #4CAF50;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .filter-btn {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .sidebar {
+                order: 2;
+            }
+
+            .map-container {
+                height: 400px;
+                order: 1;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗳️ 金沢市選挙ポスター掲示場マッピングシステム</h1>
+            <p style="margin-top: 10px; color: #666;">選挙ポスター掲示場の位置確認と巡回管理</p>
+            <span class="feature-badge">📍 597箇所の掲示場データ対応</span>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="info-message">
+                    💡 CSV/Excelファイルに緯度・経度が含まれていれば地図表示できます
+                    <br>
+                    📝 必要な列: NO, ポスター掲示場名称, 所在地, 緯度, 経度
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div>
+                        <div style="font-size: 48px; margin-bottom: 10px;">📁</div>
+                        <p style="margin-bottom: 10px;">CSV/Excelファイルをドラッグ＆ドロップ</p>
+                        <p style="font-size: 14px; color: #999;">または クリックして選択</p>
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">対応形式: CSV, XLSX, XLS</p>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" accept=".csv,.xlsx,.xls">
+                </div>
+
+                <div id="messageArea"></div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCount">0</div>
+                        <div class="stat-label">総掲示場数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="visitedCount">0</div>
+                        <div class="stat-label">確認済み</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="visitedPercent">0%</div>
+                        <div class="stat-label">進捗率</div>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportProgress()">
+                        📊 進捗をエクスポート
+                    </button>
+                    <button class="action-btn secondary" onclick="clearVisited()">
+                        🔄 確認状態リセット
+                    </button>
+                    <button class="action-btn secondary" onclick="debugInfo()">
+                        🔍 デバッグ情報
+                    </button>
+                    <button class="action-btn" onclick="loadSampleData()">
+                        📝 サンプルデータ
+                    </button>
+                </div>
+
+                <div class="filter-section">
+                    <h3 style="margin-bottom: 10px; font-size: 16px;">🔍 検索・フィルター</h3>
+                    <input type="text" class="search-input" id="searchInput" placeholder="番号、名称、住所で検索..."
+                        onkeyup="filterLocations()">
+
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" onclick="filterByStatus('all')">すべて</button>
+                        <button class="filter-btn" onclick="filterByStatus('unvisited')">未確認</button>
+                        <button class="filter-btn" onclick="filterByStatus('visited')">確認済み</button>
+                    </div>
+                </div>
+
+                <div class="location-list" id="locationList">
+                    <!-- 掲示場リストがここに表示されます -->
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        // グローバル変数
+        let map;
+        let markers = [];
+        let locations = [];
+        let visitedLocations = new Set();
+        let markersLayer;
+        let currentFilter = 'all';
+        let filteredLocations = [];
+
+        // ローカルストレージキー
+        const STORAGE_KEYS = {
+            LOCATIONS: 'poster_locations',
+            VISITED: 'visited_locations'
+        };
+
+        // 地図の初期化
+        function initMap() {
+            // 金沢市の中心座標
+            map = L.map('map').setView([36.5611, 136.6565], 12);
+
+            // 国土地理院の地図タイルを使用
+            L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
+                maxZoom: 18
+            }).addTo(map);
+
+            // マーカーレイヤーグループを作成
+            markersLayer = L.layerGroup().addTo(map);
+        }
+
+        // カスタムマーカーの作成
+        function createCustomIcon(number, isVisited = false) {
+            const className = isVisited ? 'custom-marker visited' : 'custom-marker';
+            return L.divIcon({
+                className: className,
+                html: `<div class="${className}">${number}</div>`,
+                iconSize: [35, 35],
+                iconAnchor: [17, 17]
+            });
+        }
+
+        // ファイルアップロード処理
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // クリックでファイル選択
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            // ドラッグ&ドロップ
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            // ファイル選択時の処理
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+        }
+
+        // ファイル処理
+        function handleFile(file) {
+            const fileName = file.name.toLowerCase();
+            showMessage('info', `ファイル読み込み中: ${file.name}...`);
+
+            if (fileName.endsWith('.csv')) {
+                handleCSV(file);
+            } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                handleExcel(file);
+            } else {
+                showMessage('error', 'サポートされていないファイル形式です。CSV、XLSX、XLSファイルを選択してください。');
+            }
+        }
+
+        // CSV処理（エンコーディング自動検出付き）
+        function handleCSV(file) {
+            console.log('CSV処理開始:', file.name, 'サイズ:', file.size);
+
+            // まずファイルをテキストとして読み込んで文字エンコーディングをチェック
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                let text = e.target.result;
+                console.log('読み込んだテキストの最初の500文字:', text.substring(0, 500));
+
+                // 改行文字の種類を検出・統一
+                const originalLength = text.length;
+                console.log('元のファイルサイズ:', originalLength);
+
+                // 改行文字の分析
+                const crlfCount = (text.match(/\r\n/g) || []).length;
+                const crCount = (text.match(/\r(?!\n)/g) || []).length;
+                const lfCount = (text.match(/(?<!\r)\n/g) || []).length;
+
+                console.log('改行文字分析:', {
+                    'CRLF (\\r\\n)': crlfCount,
+                    'CR (\\r)': crCount,
+                    'LF (\\n)': lfCount
+                });
+
+                // 改行文字を統一（LFに統一）
+                text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                console.log('改行統一後のサイズ:', text.length);
+
+                // 行数をカウント
+                const lines = text.split('\n');
+                console.log('総行数:', lines.length);
+                console.log('最初の10行:', lines.slice(0, 10));
+
+                // PapaParseでテキストを解析
+                const parseResult = Papa.parse(text, {
+                    header: true,
+                    skipEmptyLines: true,
+                    delimiter: '',      // 自動検出
+                    newline: '\n',      // LFに統一
+                    quoteChar: '"',
+                    escapeChar: '"',
+                    transformHeader: function (header) {
+                        // ヘッダーの前後の空白やBOMを除去
+                        return header.replace(/^\uFEFF/, '').trim();
+                    }
+                });
+
+                console.log('=== CSV解析完了 ===');
+                console.log('解析されたメタ情報:', parseResult.meta);
+                console.log('検出された区切り文字:', parseResult.meta.delimiter);
+                console.log('検出された改行文字:', parseResult.meta.linebreak);
+                console.log('データ行数:', parseResult.data.length);
+                console.log('ヘッダー:', parseResult.meta.fields);
+                console.log('最初の3行:', parseResult.data.slice(0, 3));
+
+                if (parseResult.errors.length > 0) {
+                    console.warn('解析エラーの詳細:', parseResult.errors);
+                    parseResult.errors.forEach((error, index) => {
+                        console.warn(`エラー ${index + 1}:`, {
+                            type: error.type,
+                            code: error.code,
+                            message: error.message,
+                            row: error.row
+                        });
+                    });
+
+                    // 軽微なエラーは警告のみ、重大なエラーは停止
+                    const criticalErrors = parseResult.errors.filter(e =>
+                        e.type === 'Delimiter' || e.type === 'Quotes' || e.type === 'FieldMismatch'
+                    );
+                    if (criticalErrors.length > 0) {
+                        showMessage('error', `CSV解析エラー: ${criticalErrors.map(e => e.message).join(', ')}`);
+                        return;
+                    }
+                }
+
+                if (!parseResult.data || parseResult.data.length === 0) {
+                    console.warn('PapaParseで解析できませんでした。手動解析を試行します...');
+
+                    // 手動CSV解析
+                    const manualResult = manualCSVParse(text);
+                    if (manualResult && manualResult.length > 0) {
+                        console.log('手動解析成功:', manualResult.length, '行');
+                        processLocationData(manualResult, file.name);
+                    } else {
+                        showMessage('error', 'CSVファイルにデータが見つかりませんでした。');
+                    }
+                    return;
+                }
+
+                processLocationData(parseResult.data, file.name);
+            };
+
+            reader.onerror = function (error) {
+                console.error('ファイル読み込みエラー:', error);
+                showMessage('error', 'ファイルの読み込みに失敗しました。');
+            };
+
+            // UTF-8で読み込み、失敗したらShift_JISで再試行
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // Excel処理
+        function handleExcel(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    // ヘッダー行を取得
+                    const headers = jsonData[0];
+                    const dataRows = jsonData.slice(1);
+
+                    // オブジェクト形式に変換
+                    const processedData = dataRows.map(row => {
+                        const obj = {};
+                        headers.forEach((header, index) => {
+                            obj[header] = row[index];
+                        });
+                        return obj;
+                    }).filter(row => Object.values(row).some(val => val !== undefined && val !== ''));
+
+                    processLocationData(processedData, file.name);
+                } catch (error) {
+                    console.error('Excel読み込みエラー:', error);
+                    showMessage('error', 'Excelファイルの読み込みに失敗しました: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 位置データ処理
+        function processLocationData(data, fileName) {
+            console.log('=== データ処理開始 ===');
+            console.log('受信データ:', data);
+            console.log('データ件数:', data.length);
+
+            if (!data || data.length === 0) {
+                showMessage('error', 'データが見つかりませんでした。');
+                return;
+            }
+
+            // 最初の数行を詳細に確認
+            console.log('最初の5行の詳細:');
+            data.slice(0, 5).forEach((row, index) => {
+                console.log(`行 ${index + 1}:`, row);
+                console.log(`  キー一覧:`, Object.keys(row));
+                console.log(`  値一覧:`, Object.values(row));
+            });
+
+            // データ列の検証と正規化
+            const processedLocations = [];
+            let validCount = 0;
+            let invalidCount = 0;
+
+            data.forEach((row, index) => {
+                try {
+                    console.log(`\n=== 行 ${index + 1} の処理 ===`);
+                    console.log('生データ:', row);
+
+                    // 空行やnullデータのチェック
+                    if (!row || Object.keys(row).length === 0) {
+                        console.log('空行をスキップ');
+                        return;
+                    }
+
+                    // 列名の正規化（異なる表記に対応）
+                    const normalizedRow = {};
+                    Object.keys(row).forEach(key => {
+                        if (key && row[key] !== undefined && row[key] !== null && row[key] !== '') {
+                            const normalizedKey = normalizeColumnName(key.trim());
+                            normalizedRow[normalizedKey] = row[key];
+                        }
+                    });
+
+                    console.log('正規化後:', normalizedRow);
+
+                    const location = {
+                        id: normalizedRow['NO'] || normalizedRow['番号'] || (index + 1),
+                        name: normalizedRow['ポスター掲示場名称'] || normalizedRow['名称'] || normalizedRow['名前'] || `掲示場${index + 1}`,
+                        address: normalizedRow['所在地'] || normalizedRow['住所'] || normalizedRow['場所'] || '',
+                        lat: parseFloat(normalizedRow['緯度'] || normalizedRow['latitude'] || 0),
+                        lng: parseFloat(normalizedRow['経度'] || normalizedRow['longitude'] || 0)
+                    };
+
+                    console.log('作成された位置オブジェクト:', location);
+
+                    // 緯度経度の有効性チェック
+                    if (location.lat !== 0 && location.lng !== 0 &&
+                        !isNaN(location.lat) && !isNaN(location.lng) &&
+                        location.lat >= -90 && location.lat <= 90 &&
+                        location.lng >= -180 && location.lng <= 180) {
+                        processedLocations.push(location);
+                        validCount++;
+                        console.log(`✓ 有効なデータとして追加: ${location.name}`);
+                    } else {
+                        invalidCount++;
+                        console.warn(`✗ 無効な緯度経度 - 行 ${index + 1}: ${location.name} (${location.lat}, ${location.lng})`);
+                    }
+                } catch (error) {
+                    invalidCount++;
+                    console.error(`行 ${index + 1} の処理エラー:`, error);
+                }
+            });
+
+            console.log(`\n=== 処理結果 ===`);
+            console.log(`有効データ: ${validCount}件`);
+            console.log(`無効データ: ${invalidCount}件`);
+            console.log(`処理済み位置データ:`, processedLocations);
+
+            if (processedLocations.length === 0) {
+                showMessage('error', '有効な位置データが見つかりませんでした。緯度・経度の列が正しく設定されているか確認してください。');
+                return;
+            }
+
+            // データを保存
+            locations = processedLocations;
+            saveToLocalStorage(STORAGE_KEYS.LOCATIONS, locations);
+
+            // マーカーを地図に表示
+            displayMarkersOnMap();
+
+            // UIを更新
+            updateUI();
+
+            showMessage('success', `${processedLocations.length}件のデータを読み込みました (${fileName})`);
+
+            // 地図の表示範囲を調整
+            if (processedLocations.length > 0) {
+                const bounds = L.latLngBounds(processedLocations.map(loc => [loc.lat, loc.lng]));
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+
+        // 手動CSV解析（PapaParseが失敗した場合の代替手段）
+        function manualCSVParse(text) {
+            console.log('手動CSV解析開始...');
+
+            try {
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                console.log('手動解析：総行数', lines.length);
+
+                if (lines.length < 2) {
+                    console.warn('手動解析：データが不十分');
+                    return null;
+                }
+
+                // ヘッダー行を解析
+                const headers = parseCSVLine(lines[0]);
+                console.log('手動解析：ヘッダー', headers);
+
+                // データ行を解析
+                const data = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = parseCSVLine(lines[i]);
+                    if (values.length > 0) {
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+                        data.push(row);
+                    }
+                }
+
+                console.log('手動解析：データ行数', data.length);
+                console.log('手動解析：最初の3行', data.slice(0, 3));
+
+                return data;
+
+            } catch (error) {
+                console.error('手動解析エラー:', error);
+                return null;
+            }
+        }
+
+        // CSV行を解析（簡易版）
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        // エスケープされた引用符
+                        current += '"';
+                        i++; // 次の文字もスキップ
+                    } else {
+                        // 引用符の開始または終了
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // フィールドの区切り
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+
+            // 最後のフィールドを追加
+            result.push(current.trim());
+
+            return result;
+        }
+
+        // 列名の正規化
+        function normalizeColumnName(columnName) {
+            if (!columnName) return '';
+
+            // 文字列に変換し、前後の空白を削除
+            const cleanName = String(columnName).trim();
+
+            const normalizations = {
+                'no': 'NO',
+                'No': 'NO',
+                'NO': 'NO',
+                '番号': 'NO',
+                'number': 'NO',
+                'ポスター掲示場名称': 'ポスター掲示場名称',
+                '名称': 'ポスター掲示場名称',
+                '名前': 'ポスター掲示場名称',
+                'name': 'ポスター掲示場名称',
+                'Name': 'ポスター掲示場名称',
+                '所在地': '所在地',
+                '住所': '所在地',
+                '場所': '所在地',
+                'address': '所在地',
+                'Address': '所在地',
+                '緯度': '緯度',
+                'lat': '緯度',
+                'Lat': '緯度',
+                'latitude': '緯度',
+                'Latitude': '緯度',
+                '経度': '経度',
+                'lng': '経度',
+                'Lng': '経度',
+                'lon': '経度',
+                'Lon': '経度',
+                'longitude': '経度',
+                'Longitude': '経度'
+            };
+
+            // 大文字小文字を区別せずに検索
+            const lowerName = cleanName.toLowerCase();
+            for (const [key, value] of Object.entries(normalizations)) {
+                if (key.toLowerCase() === lowerName || key === cleanName) {
+                    console.log(`列名正規化: "${cleanName}" → "${value}"`);
+                    return value;
+                }
+            }
+
+            console.log(`列名正規化: "${cleanName}" → そのまま`);
+            return cleanName;
+        }
+
+        // マーカーを地図に表示
+        function displayMarkersOnMap() {
+            // 既存のマーカーをクリア
+            markersLayer.clearLayers();
+            markers = [];
+
+            locations.forEach(location => {
+                const isVisited = visitedLocations.has(location.id.toString());
+                const marker = L.marker([location.lat, location.lng], {
+                    icon: createCustomIcon(location.id, isVisited)
+                });
+
+                // ポップアップを設定
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h4>${location.name}</h4>
+                        <p><strong>番号:</strong> ${location.id}</p>
+                        <p><strong>住所:</strong> ${location.address}</p>
+                        <p><strong>座標:</strong> ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}</p>
+                        <div style="margin-top: 10px;">
+                            <button onclick="toggleVisited('${location.id}')" 
+                                    style="padding: 5px 10px; background: ${isVisited ? '#4CAF50' : '#FF5722'}; 
+                                           color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                ${isVisited ? '✓ 確認済み' : '○ 未確認'}
+                            </button>
+                        </div>
+                    </div>
+                `);
+
+                // マーカークリック時の処理
+                marker.on('click', function () {
+                    // サイドバーの対応する項目をハイライト
+                    highlightLocationItem(location.id);
+                });
+
+                markersLayer.addLayer(marker);
+                markers.push({ marker, location });
+            });
+        }
+
+        // 訪問状態の切り替え
+        function toggleVisited(locationId) {
+            const id = locationId.toString();
+            if (visitedLocations.has(id)) {
+                visitedLocations.delete(id);
+            } else {
+                visitedLocations.add(id);
+            }
+
+            // ローカルストレージに保存
+            saveToLocalStorage(STORAGE_KEYS.VISITED, Array.from(visitedLocations));
+
+            // マーカーとUIを更新
+            displayMarkersOnMap();
+            updateUI();
+        }
+
+        // 位置リストの更新
+        function updateLocationList() {
+            const locationList = document.getElementById('locationList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            // フィルタリング
+            filteredLocations = locations.filter(location => {
+                const matchesSearch =
+                    location.name.toLowerCase().includes(searchTerm) ||
+                    location.address.toLowerCase().includes(searchTerm) ||
+                    location.id.toString().includes(searchTerm);
+
+                const isVisited = visitedLocations.has(location.id.toString());
+                const matchesStatus =
+                    currentFilter === 'all' ||
+                    (currentFilter === 'visited' && isVisited) ||
+                    (currentFilter === 'unvisited' && !isVisited);
+
+                return matchesSearch && matchesStatus;
+            });
+
+            locationList.innerHTML = '';
+
+            filteredLocations.forEach(location => {
+                const isVisited = visitedLocations.has(location.id.toString());
+                const item = document.createElement('div');
+                item.className = `location-item ${isVisited ? 'visited' : ''}`;
+                item.onclick = () => focusOnLocation(location);
+
+                item.innerHTML = `
+                    <div class="location-header">
+                        <span class="location-number">${location.id}</span>
+                        <span class="location-name">${location.name}</span>
+                    </div>
+                    <div class="location-address">${location.address}</div>
+                `;
+
+                locationList.appendChild(item);
+            });
+
+            // 結果が空の場合
+            if (filteredLocations.length === 0) {
+                locationList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">該当する掲示場が見つかりません</div>';
+            }
+        }
+
+        // 地図上の位置にフォーカス
+        function focusOnLocation(location) {
+            map.setView([location.lat, location.lng], 16);
+
+            // 対応するマーカーのポップアップを開く
+            const markerData = markers.find(m => m.location.id === location.id);
+            if (markerData) {
+                markerData.marker.openPopup();
+            }
+        }
+
+        // 位置項目のハイライト
+        function highlightLocationItem(locationId) {
+            // 既存のハイライトをクリア
+            document.querySelectorAll('.location-item').forEach(item => {
+                item.style.background = '';
+            });
+
+            // 対応する項目をハイライト
+            document.querySelectorAll('.location-item').forEach(item => {
+                const numberElement = item.querySelector('.location-number');
+                if (numberElement && numberElement.textContent === locationId.toString()) {
+                    item.style.background = '#fff3cd';
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+
+        // ステータスフィルター
+        function filterByStatus(status) {
+            currentFilter = status;
+
+            // ボタンのアクティブ状態を更新
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            updateLocationList();
+        }
+
+        // 検索フィルター
+        function filterLocations() {
+            updateLocationList();
+        }
+
+        // UI更新
+        function updateUI() {
+            const totalCount = locations.length;
+            const visitedCount = visitedLocations.size;
+            const percentage = totalCount > 0 ? (visitedCount / totalCount * 100).toFixed(1) : 0;
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('visitedCount').textContent = visitedCount;
+            document.getElementById('visitedPercent').textContent = `${percentage}%`;
+            document.getElementById('progressFill').style.width = `${percentage}%`;
+
+            // 位置リストの更新
+            updateLocationList();
+        }
+
+        // 進捗エクスポート
+        function exportProgress() {
+            if (locations.length === 0) {
+                showMessage('error', 'エクスポートするデータがありません。');
+                return;
+            }
+
+            const csvData = [
+                ['NO', 'ポスター掲示場名称', '所在地', '緯度', '経度', '確認状況', '確認日時']
+            ];
+
+            locations.forEach(location => {
+                const isVisited = visitedLocations.has(location.id.toString());
+                csvData.push([
+                    location.id,
+                    location.name,
+                    location.address,
+                    location.lat,
+                    location.lng,
+                    isVisited ? '確認済み' : '未確認',
+                    isVisited ? new Date().toLocaleString('ja-JP') : ''
+                ]);
+            });
+
+            const csvContent = csvData.map(row => row.join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `掲示場確認状況_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+
+            showMessage('success', '進捗データをエクスポートしました。');
+        }
+
+        // 確認状態リセット
+        function clearVisited() {
+            if (confirm('すべての確認状態をリセットしますか？')) {
+                visitedLocations.clear();
+                saveToLocalStorage(STORAGE_KEYS.VISITED, []);
+                displayMarkersOnMap();
+                updateUI();
+                showMessage('success', '確認状態をリセットしました。');
+            }
+        }
+
+        // デバッグ情報表示
+        function debugInfo() {
+            console.log('=== デバッグ情報 ===');
+            console.log('現在の位置データ数:', locations.length);
+            console.log('位置データ:', locations);
+            console.log('訪問済み位置:', Array.from(visitedLocations));
+            console.log('マーカー数:', markers.length);
+            console.log('フィルター状態:', currentFilter);
+            console.log('フィルター済みデータ:', filteredLocations);
+
+            const info = `
+デバッグ情報:
+- 位置データ数: ${locations.length}
+- 訪問済み: ${visitedLocations.size}
+- マーカー数: ${markers.length}
+- フィルター: ${currentFilter}
+- フィルター結果: ${filteredLocations.length}
+
+詳細はコンソール（F12）を確認してください。
+            `;
+            alert(info);
+        }
+
+        // サンプルデータ読み込み
+        function loadSampleData() {
+            if (locations.length > 0 && !confirm('既存のデータを削除してサンプルデータを読み込みますか？')) {
+                return;
+            }
+
+            // サンプルデータを作成
+            const sampleData = [
+                { id: 1, name: '金沢駅前掲示場', address: '金沢市木ノ新保町1-1', lat: 36.5783, lng: 136.6477 },
+                { id: 2, name: '香林坊掲示場', address: '金沢市香林坊1-1-1', lat: 36.5637, lng: 136.6540 },
+                { id: 3, name: '片町掲示場', address: '金沢市片町2-1-10', lat: 36.5649, lng: 136.6547 },
+                { id: 4, name: '兼六園前掲示場', address: '金沢市兼六町1-4', lat: 36.5622, lng: 136.6648 },
+                { id: 5, name: '金沢城公園前掲示場', address: '金沢市丸の内1-1', lat: 36.5625, lng: 136.6623 }
+            ];
+
+            console.log('サンプルデータ読み込み:', sampleData);
+
+            // データを設定
+            locations = sampleData;
+            visitedLocations.clear();
+
+            // 保存
+            saveToLocalStorage(STORAGE_KEYS.LOCATIONS, locations);
+            saveToLocalStorage(STORAGE_KEYS.VISITED, []);
+
+            // 表示更新
+            displayMarkersOnMap();
+            updateUI();
+
+            showMessage('success', `サンプルデータ（${sampleData.length}件）を読み込みました。`);
+
+            // 地図の表示範囲を調整
+            if (locations.length > 0) {
+                const bounds = L.latLngBounds(locations.map(loc => [loc.lat, loc.lng]));
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+
+        // メッセージ表示
+        function showMessage(type, message) {
+            const messageArea = document.getElementById('messageArea');
+            const messageClass = type === 'error' ? 'error-message' :
+                type === 'success' ? 'success-message' : 'info-message';
+
+            messageArea.innerHTML = `<div class="${messageClass}">${message}</div>`;
+
+            // 3秒後に自動で消去（エラーメッセージ以外）
+            if (type !== 'error') {
+                setTimeout(() => {
+                    messageArea.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // ローカルストレージ操作
+        function saveToLocalStorage(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (error) {
+                console.error('ローカルストレージ保存エラー:', error);
+            }
+        }
+
+        function loadFromLocalStorage(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (error) {
+                console.error('ローカルストレージ読み込みエラー:', error);
+                return null;
+            }
+        }
+
+        // 初期化処理
+        function initializeApp() {
+            initMap();
+            setupFileUpload();
+
+            // ローカルストレージから データを復元
+            const savedLocations = loadFromLocalStorage(STORAGE_KEYS.LOCATIONS);
+            const savedVisited = loadFromLocalStorage(STORAGE_KEYS.VISITED);
+
+            if (savedLocations) {
+                locations = savedLocations;
+                displayMarkersOnMap();
+            }
+
+            if (savedVisited) {
+                visitedLocations = new Set(savedVisited);
+            }
+
+            updateUI();
+        }
+
+        // イベントリスナーの設定
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeApp();
+        });
+    </script>
+</body>
+
+</html>
